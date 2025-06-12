@@ -44,7 +44,7 @@ const getWeather = async (query) => {
 
     let weather
     try {
-        weather = await fetchJson(`http://localhost:3333/weathers?search=${query}`)
+        weather = await fetchJson(`https://www.meteofittizio.it`)
     } catch (error) {
         throw new Error(`Non posso recuperare il meteo della destinazione ${query}`)
     }
@@ -65,9 +65,25 @@ const getAirport = async (query) => {
 
 async function getDashboardData(query) {
     try {
-        const infos = await Promise.all([getDestination(query).catch(() => null), getWeather(query).catch(() => null), getAirport(query).catch(() => null)])
+        const infos = await Promise.allSettled([getDestination(query), getWeather(query), getAirport(query)])
         console.log(infos);
-        const [destination, weather, airport] = infos
+        const [destinationResult, weatherResult, airportResult] = infos
+
+        const destination = destinationResult.status === 'fulfilled' ? destinationResult.value : null
+        const weather = weatherResult.status === 'fulfilled' ? weatherResult.value : null
+        const airport = airportResult.status === 'fulfilled' ? airportResult.value : null
+
+        if (destinationResult.status === 'rejected') {
+            console.error(`Errore nel recuperare la destinazione: ${destinationResult.reason}`)
+        }
+
+        if (weatherResult.status === 'rejected') {
+            console.error(`Errore nel recuperare il meteo: ${weatherResult.reason}`)
+        }
+
+        if (airportResult === 'rejected') {
+            console.error(`Errore nel recuperare l'aeroporto: ${airportResult.reason}`)
+        }
 
         return {
             city: destination ? destination[0].name : null,
@@ -85,7 +101,7 @@ async function getDashboardData(query) {
 
 }
 
-getDashboardData('vienna')
+getDashboardData('london')
     .then(data => {
         console.log('Dasboard data:', data);
         console.log(`${data.city} is in ${data.country}.`)
